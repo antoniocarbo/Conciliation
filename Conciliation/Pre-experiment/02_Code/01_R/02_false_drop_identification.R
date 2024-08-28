@@ -135,9 +135,15 @@ final_base <- final_base %>%
    mutate(max_no_hubo_convenio_next_claim=lead(max_no_hubo_convenio))%>%
    mutate(max_numero_audiencia_next_claim=lead(max_numero_audiencia))%>%
    # leading information about summoned and atendance to the hearings
+   mutate(presentado_next_claim=lead(presentado))%>%
    mutate(citados_comparecen_audiencia_next_claim=lead(citados_comparecen_audiencia))%>%
    mutate(diferencia_citados_comaprecientes_next_claim=lead(diferencia_citados_comaprecientes))%>%
    ungroup()
+ 
+# creating a variable that denotes if the conciliator changed 
+ final_base <-  final_base %>%
+   mutate(different_conciliator=if_else(conciliador_next_claim!=conciliador,1,0))
+ 
  
  # -----------------------------------------------------------------------------
  #                              Using lead infromation to compute false drops
@@ -161,6 +167,22 @@ final_base <- final_base %>%
    mutate(false_drop_time_25_dropped=if_else(tiempo_entre_audiencia_y_siguiente_solicitud<=25 &
                                                max_archivado==1 &
                                                tiempo_entre_audiencia_y_siguiente_solicitud>=0,1,0)) 
+ 
+# It is not enough to identify false drops; to conduct any worthwhile analysis, we need other variables—controls or outcomes.
+# We ensured this by previously leading with other variables; however, for all observations that are not
+# false drops we need to keep the old value 
+ 
+ final_base <-  final_base %>%
+   # If the observation is a false drop, put the next claim, if not put the same claim
+   mutate(numero_citados_asump_time_25=if_else(false_drop_time_25_dropped==0,numero_citados,numero_citados_next_claim))%>%
+   mutate(max_hubo_convenio_asump_time_25=if_else(false_drop_time_25_dropped==0,max_hubo_convenio,max_hubo_convenio_next_claim))%>%
+   mutate(max_no_hubo_convenio_asump_time_25=if_else(false_drop_time_25_dropped==0,max_no_hubo_convenio,max_no_hubo_convenio_next_claim))%>%
+   mutate(max_numero_audiencia_asump_time_25=if_else(false_drop_time_25_dropped==0,max_numero_audiencia,max_numero_audiencia_next_claim))%>%
+   mutate(max_archivado_asump_time_25=if_else(false_drop_time_25_dropped==0,max_archivado,max_archivado_next_claim))%>%
+   mutate(citados_comparecen_audiencia_asump_time_25=if_else(false_drop_time_25_dropped==0,citados_comparecen_audiencia,citados_comparecen_audiencia_next_claim))%>%
+   mutate(diferencia_citados_comaprecientes_asump_time_25=if_else(false_drop_time_25_dropped==0,diferencia_citados_comaprecientes,diferencia_citados_comaprecientes_next_claim))%>%
+   mutate(diff_con_asump_time_25_dropped=if_else(false_drop_time_25_dropped==0,0,different_conciliator)) %>% 
+   mutate(presentado_25_dropped=if_else(false_drop_time_25_dropped==0,presentado,presentado_next_claim))
  
 
  
