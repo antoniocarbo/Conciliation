@@ -144,7 +144,7 @@ comparecientes <- comparecientes %>%
   distinct(parte_id,audiencia_id, .keep_all = TRUE) %>%
   select("audiencia_id","parte_id","presentado") 
 
-worker_request_fake_drops <- left_join(hearings_features,comparecientes, by=c("audiencia_id","parte_id")) %>%
+hearings_features <- left_join(hearings_features,comparecientes, by=c("audiencia_id","parte_id")) %>%
   mutate(presentado=if_else(is.na(presentado),0,if_else(presentado==1,1,NA))) %>%
   mutate(citado_trabajador_comparece=if_else(is.na(citado_trabajador_comparece),1,citado_trabajador_comparece))  
 
