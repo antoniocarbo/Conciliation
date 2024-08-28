@@ -1,0 +1,1 @@
+Description of the folder: This folder divides de data and code of the conciliation project depending on the stage of the investigation. 

@@ -1,0 +1,1 @@
+Description of the folder: This folder has all the images that are used on the overleaf reports. 

@@ -1,0 +1,1 @@
+Description of the folder: This folder has all the figures used for documentation. 
