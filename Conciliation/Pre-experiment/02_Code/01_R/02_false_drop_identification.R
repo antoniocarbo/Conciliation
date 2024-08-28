@@ -184,5 +184,8 @@ final_base <- final_base %>%
    mutate(diff_con_asump_time_25_dropped=if_else(false_drop_time_25_dropped==0,0,different_conciliator)) %>% 
    mutate(presentado_25_dropped=if_else(false_drop_time_25_dropped==0,presentado,presentado_next_claim))
  
-
+# write 
+ write.csv( final_base,here("01_Data",
+                              "02_Created",
+                              "base_with_fake_drops.csv"))
  
