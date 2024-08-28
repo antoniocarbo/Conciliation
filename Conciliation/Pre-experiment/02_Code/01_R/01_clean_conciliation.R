@@ -160,4 +160,77 @@ write_csv(payments, file = here("01_Data",
                                 "02_Created",
                                 "worker_payment_order.csv"))
 
+# CLEAN CHARACTERISTICS AND PROPOSALS DATA -------------------------------------
+
+# Load salario minimo
+salario_minimo <-  read_csv("01_Data/01_Raw/salario_minimo.csv") %>%
+  select(anio_termino,sal_min) %>%
+  filter(!is.na(sal_min))
+
+# This data is at worker-employer-hearing level. This is because the data includes
+# the termination of the hearing, as well as the CURP for each worker and the RFC
+# for each employer (if available)
+charac_proposal <- read_delim(str_c("01_Data/01_Raw/reporte-econometria-itam_",
+                                    update_date,
+                                    ".csv"),
+                              delim = "|") %>%
+  # Create daily wage and tenure
+  mutate(sal_diario = case_when(
+    periodicidad_remuneracion == "Mensual" ~ remuneracion / 30,
+    periodicidad_remuneracion == "Quincenal" ~ remuneracion / 15,
+    periodicidad_remuneracion == "Semanal" ~ remuneracion / 7,
+    .default = remuneracion
+  ),
+  antig = as.numeric(fecha_salida - fecha_ingreso),
+  diurna = as.numeric(jornada == "DIURNA"),
+  quincenal = as.numeric(periodicidad_remuneracion == "Quincenal")) %>%
+  
+  # Clean certain problems with the variables
+  # Replace with NA's if tenure is negative, and trim the top 0.005% tenure value.
+  mutate(antig = case_when(antig <= 0 ~ NA,
+                           antig > quantile(antig, na.rm = T, probs = 0.995) ~ NA, 
+                           T ~ antig),
+         # Replace with NA's if the daily wage is zero, and trim the top 0.005% wages.
+         sal_diario = case_when(sal_diario == 0 ~ NA,
+                                sal_diario > quantile(sal_diario, na.rm = T, probs = 0.995) ~ NA,
+                                T ~ sal_diario)
+  ) %>%
+  
+  # Create variable minimo de ley 
+  # Get the minimum wage for the year the worker ended it's work relation
+  mutate(anio_termino = case_when(!is.na(fecha_salida) ~ year(fecha_salida)),
+         anio_ingreso = case_when(!is.na(fecha_ingreso) ~ year(fecha_ingreso))) %>%
+  left_join(salario_minimo, by = "anio_termino") %>%
+  
+  # Calculate the proportion of this year worked
+  mutate(
+    antiguedad_anio_actual = case_when(
+      !is.na(fecha_salida) & anio_termino!=anio_ingreso ~ round(as.numeric(fecha_salida - as_date(paste(anio_termino,"01","01",sep="-")))/365, 2),
+      !is.na(fecha_salida) & anio_termino==anio_ingreso ~ round(as.numeric((fecha_salida-fecha_ingreso))/ 365,2),
+      .default = NA
+    ),
+    
+    # Tenure in years
+    antiguedad_anios = round(antig/365, 2),
+    
+    # Calculate the days of vacation according to tenure
+    # If you are fired within your first year, you get the proportional vacations for that year
+    dias_vacaciones = case_when(
+      antiguedad_anios < 1 ~ 6*antiguedad_anios,
+      antiguedad_anios < 5 ~ 6 + (floor(antiguedad_anios) - 1)*2,
+      T ~ 12 + floor(antiguedad_anios/5)*2
+    )) %>%
+  
+  # Calculate payments that should be made to the worker
+  mutate(c_indemnizacion = round(90*sal_diario, 2),
+         c_prima_antig = case_when(
+           sal_diario < 2*sal_min ~ round(antiguedad_anios*12*sal_diario, 2),
+           T ~ round(antiguedad_anios*12*2*sal_min, 2)
+         ),
+         c_aguinaldo = round(antiguedad_anio_actual*15*sal_diario, 2),
+         c_vacaciones = round(dias_vacaciones*1.25*sal_diario, 2)) %>%
+  
+  # Law minimum variable
+  mutate(minimo_de_ley = c_indemnizacion + c_prima_antig + c_aguinaldo + c_vacaciones)
+
 
