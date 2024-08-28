@@ -34,4 +34,28 @@ hearings_features <- read.csv(here("01_Data",
 
 worker_hearing_request_characteristics <-  read_csv(here("01_Data",
                                                           "02_Created",
-                                                          "worker_hearing_request_characteristics.csv.csv"))
+                                                          "worker_hearing_request_characteristics.csv"))
+
+# -----------------------------------------------------------------------------
+#                               Merge data sets
+# -----------------------------------------------------------------------------
+
+# Observations before merge 
+# hearing features: 31822
+# worker_hearing_request_characteristics: 103394
+
+# level of the data
+# hearing features: first hearing-one worker-request
+# worker_hearing_request_characteristics: worker-hearing-request
+
+final_base <- left_join(hearings_features,worker_hearing_request_characteristics,  by=c("solicitud_id","audiencia_id","parte_id"))
+
+# final base merge:
+# Observations matched: 29848
+# Observations not matched 1974
+
+# The possibility of a mistmath is confusing, as there should be data for every worker. 
+# But remember on 01_clean_conciliation we winsorized workers data.
+
+
+
