@@ -131,4 +131,33 @@ mutate(genero = as.numeric(genero == "FEMENINO"),
   mutate(tiempo_en_resolver=fecha_ultima_audiencia_sol_par-fecha_primera_audiencia_sol_par)  %>%
   ungroup()
 
+# CLEAN PAYMENTS DATA ----------------------------------------------------------
+# This data is at worker-payment level. A conciliation process that ends up in an
+# agreement may involve several payments, which can be made in installments. This
+# database has the agreed payment date, and for payments due, if they were in fact paid.
+
+# Load conciliation payments data
+payments <- read_csv(str_c("01_Data/01_Raw/completo-datos-pagos-fuente_",
+                           update_date,
+                           ".csv")) %>%
+  
+  # Make the payment date actually a date
+  mutate(fecha_cumplimiento = date(fecha_cumplimiento)) %>%
+  group_by(parte_id) %>%
+  # Collapse the database at worker level, i.e. outcome level
+  summarise(monto = sum(monto, na.rm = T),
+            fecha_cumplimiento = min(fecha_cumplimiento, na.rm = T),
+            pagado = max(pagado, na.rm = T),
+            diferido = max(diferido, na.rm = T)) %>%
+  
+  # Replace the cases where we have a -Inf with NA. The -Inf means all within
+  # group observations were NA's.
+  mutate(pagado = ifelse(pagado == -Inf, NA, pagado)) %>%
+  ungroup()
+
+# Save the worker - payment order total database.
+write_csv(payments, file = here("01_Data",
+                                "02_Created",
+                                "worker_payment_order.csv"))
+
 
