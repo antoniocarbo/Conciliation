@@ -131,6 +131,50 @@ mutate(genero = as.numeric(genero == "FEMENINO"),
   mutate(tiempo_en_resolver=fecha_ultima_audiencia_sol_par-fecha_primera_audiencia_sol_par)  %>%
   ungroup()
 
+#Add comparecencias data base to the hearing features data
+
+comparecientes <- read.csv(here("tmp","sinacolcdmx_20240209","comparecientes.csv")) 
+
+#for some reason there are repreted observations, etiher they got updated or they got eliminated
+comparecientes <- comparecientes %>%
+  mutate(presentado=1) %>%
+  distinct(parte_id,audiencia_id, .keep_all = TRUE) %>%
+  select("audiencia_id","parte_id","presentado") 
+
+worker_request_fake_drops <- left_join(hearings_features,comparecientes, by=c("audiencia_id","parte_id")) %>%
+  mutate(presentado=if_else(is.na(presentado),0,if_else(presentado==1,1,NA))) %>%
+  mutate(citado_trabajador_comparece=if_else(is.na(citado_trabajador_comparece),1,citado_trabajador_comparece))  
+
+# Only first hearings are quasi random, so ill reduce this data base -------------------------
+# to the level reqest- first hearing ---------------------------------------------------------
+
+# before that lets save the worker-hearing-request data base
+# Save the worker - hearing database.
+write_csv(hearings_features, file = here("01_Data",
+                                         "02_Created",
+                                         "worker_hearing.csv"))
+
+# reduce hearing features to the first hearing
+hearings_features <- hearings_features %>%
+  
+  # Get the final outcome of the request
+  group_by(parte_id) %>%
+  mutate(max_hubo_convenio = max(hubo_convenio),
+         max_no_hubo_convenio = max(no_hubo_convenio),
+         max_archivado = max(archivado),
+         max_numero_audiencia = max(numero_audiencia)) %>%
+  ungroup() %>%
+  
+  # Keep one observation request only the first hearing
+  # Keep only first hearings
+  filter(numero_audiencia == 1) %>%
+  filter(audiencia_finalizada == TRUE) %>%
+  
+  # Some workers have several first hearings (why?)
+  # Keep the first appearance in the database, since it is ordered by creation date
+  distinct(parte_id, .keep_all = TRUE) 
+
+
 # CLEAN PAYMENTS DATA ----------------------------------------------------------
 # This data is at worker-payment level. A conciliation process that ends up in an
 # agreement may involve several payments, which can be made in installments. This
@@ -159,6 +203,7 @@ payments <- read_csv(str_c("01_Data/01_Raw/completo-datos-pagos-fuente_",
 write_csv(payments, file = here("01_Data",
                                 "02_Created",
                                 "worker_payment_order.csv"))
+
 
 # CLEAN CHARACTERISTICS AND PROPOSALS DATA -------------------------------------
 
@@ -281,6 +326,10 @@ worker_hearing_request_characteristics <- left_join(worker_hearing_request_chara
 write_csv(worker_hearing_request_characteristics, file = here("01_Data",
                                                               "02_Created",
                                                               "worker_hearing_request_characteristics.csv"))
+
+
+
+
 
 
 
