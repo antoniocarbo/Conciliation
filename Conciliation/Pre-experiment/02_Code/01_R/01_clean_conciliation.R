@@ -8,8 +8,11 @@
 #'      completo-datos-pagos-fuente_2023-07-25.csv
 #' 
 #' @Out: 
-#' 
-
+#' conciliator.csv
+#' worker_first.csv
+#' worker_hearing_request_characteristics.csv
+#' worker_hearing.csv
+#' worker_payment_order.csv
 # Load libraries
 pacman::p_load(here, readr, lubridate, dplyr, tidyr, stringr, readxl)
 
@@ -133,7 +136,7 @@ mutate(genero = as.numeric(genero == "FEMENINO"),
 
 #Add comparecencias data base to the hearing features data
 
-comparecientes <- read.csv(here("tmp","sinacolcdmx_20240209","comparecientes.csv")) 
+comparecientes <- read.csv(here("01_Data","01_Raw","comparecientes.csv")) 
 
 #for some reason there are repreted observations, etiher they got updated or they got eliminated
 comparecientes <- comparecientes %>%
@@ -172,8 +175,21 @@ hearings_features <- hearings_features %>%
   
   # Some workers have several first hearings (why?)
   # Keep the first appearance in the database, since it is ordered by creation date
-  distinct(parte_id, .keep_all = TRUE) 
+  distinct(parte_id, .keep_all = TRUE)  %>%
+  # remove hearings that happend before 2023
+  filter(fecha_audiencia> "2023-01-01") %>%
+  # remove hearings that are nos quasirandom or, what is the same, assigned by an algorithm .
+  mutate(hora_inicio_audiencia_as_numeric_aux_filter=(hora_inicio_audiencia_as_numeric+3600)) %>%
+  
+  mutate(hora_inicio_audiencia_as_numeric_aux_filter= hora_inicio_audiencia_as_numeric_aux_filter %% 5400) %>%
+  
+  filter(hora_inicio_audiencia_as_numeric_aux_filter == 0 & hora_inicio_audiencia_as_numeric <=50400)
 
+
+# Save the request-first hearing- one worker features
+write_csv(hearings_features, file = here("01_Data",
+                                         "02_Created",
+                                         "worker_first.csv"))
 
 # CLEAN PAYMENTS DATA ----------------------------------------------------------
 # This data is at worker-payment level. A conciliation process that ends up in an
@@ -327,7 +343,34 @@ write_csv(worker_hearing_request_characteristics, file = here("01_Data",
                                                               "02_Created",
                                                               "worker_hearing_request_characteristics.csv"))
 
+## CONCILIATOR LEVEL DATA ------------------------------------------------------
+conciliator <- hearings_features %>%
+  
+  # Get the first hearing and last hearing date for each conciliator
+  group_by(conciliador) %>%
+  mutate(first_hearing = min(fecha_audiencia),
+         last_hearing = max(fecha_audiencia)) %>%
+  ungroup() %>%
+  
+  # Now get the number of hearings per day
+  group_by(conciliador, fecha_audiencia) %>%
+  mutate(audiencias = n()) %>%
+  ungroup() %>%
+  
+  # Now get the average hearings per day
+  group_by(conciliador) %>%
+  summarise(audiencias = mean(audiencias),
+            first_hearing = mean(first_hearing),
+            last_hearing = mean(last_hearing)) %>%
+  ungroup() %>%
+  
+  # Calculate the experience of each conciliator
+  mutate(experience = last_hearing - first_hearing)
 
+# Save the conciliator database.
+write_csv(conciliator, file = here("01_Data",
+                                   "02_Created",
+                                   "conciliator.csv"))
 
 
 
