@@ -10,7 +10,7 @@
 # Objective: Identify false drops 
 #
 # Data inputs: worker_first, worker_hearing_request_characteristics
-# Outputs: final_base
+# Outputs: false_drop_base
 # -----------------------------------------------------------------------------
 
 # -----------------------------------------------------------------------------
@@ -85,5 +85,74 @@ final_base <- final_base %>%
 # , the data is at the level hearing so every hearing where I "Antonio" came to the heraing counts as once observation)
 
  table(final_base$curp_repetido)
+ 
+# Create a variable that might be interesting (Number of summoned vs. number of attendees)
+ base_analisis <- base_analisis %>%
+   mutate(diferencia_citados_comaprecientes=numero_citados-citados_comparecen_audiencia)
 
-
+# The idea to identify a false drop is that immediately after a case has been archived, 
+# the same worker has made another request. However, 
+# to identify this phenomenon and others that involve variables from one request to another, 
+# it is necessary to shift the information from the following request to the previous one,
+# so that all the information is in the same row.
+ 
+# For example, if I want to check the date of the first request and the last request,
+# it is not possible in the current format of the database,
+# since the date of the last request belongs to another row.
+# To solve this, the information from subsequent hearings is shifted by grouping by worker,
+# sorting according to the date, and then leading the data.
+ 
+ base_analisis <- base_analisis %>%
+   # grouping by worker 
+   group_by(curp_trabajador) %>%
+   # sorting according to the date
+   arrange(ymd(fecha_audiencia)) %>%
+   # leading information about the date of the request
+   mutate(fecha_siguiente_solicitud=lead(fecha_solicitud))%>%
+   # leading information about the date of the gender (I did it like a sanity check )
+   mutate(genero_next_claim=lead(genero))%>%
+   # leading information about the date of the wage claimed
+   mutate(sal_diario_next_claim=lead(sal_diario))%>%
+   # leading information about the date of the tenure
+   mutate(antig_next_claim=lead(antig))%>%
+   # leading information about the workers type of shift
+   mutate(diurna_next_claim=lead(diurna))%>%
+   # leading information about the workers payment time frame
+   mutate(quincenal_next_claim=lead(quincenal))%>%
+   # leading information about the workers shift
+   mutate(horas_semanales_next_claim=lead(horas_semanales))%>%
+   # leading information about the Number of summoned
+   mutate(numero_citados_next_claim=lead(numero_citados))%>%
+   # leading information about the concilaitor on the next request
+   mutate(conciliador_next_claim=lead(conciliador))%>%
+   # leading information about the the entrance date
+   mutate(fecha_ingreso_next_claim=lead(fecha_ingreso))%>%
+   # leading information about the exit date
+   mutate(fecha_salida_next_claim=lead(fecha_salida))%>%
+   # leading information about next claim outcomes
+   mutate(max_hubo_convenio_next_claim=lead(max_hubo_convenio))%>%
+   mutate(max_archivado_next_claim=lead(max_archivado))%>%
+   mutate(max_no_hubo_convenio_next_claim=lead(max_no_hubo_convenio))%>%
+   mutate(max_numero_audiencia_next_claim=lead(max_numero_audiencia))%>%
+   # leading information about summoned and atendance to the hearings
+   mutate(presentado_next_claim=lead(presentado))%>%
+   mutate(citados_comparecen_audiencia_next_claim=lead(citados_comparecen_audiencia))%>%
+   mutate(diferencia_citados_comaprecientes_next_claim=lead(diferencia_citados_comaprecientes))%>%
+   ungroup()
+ 
+ # -----------------------------------------------------------------------------
+ #                              Using lead infromation to compute false drops
+ # -----------------------------------------------------------------------------
+ 
+ # calculating the difference in days between tha repetead cases
+ 
+ base_analisis <- base_analisis %>%
+   # time between hearing and next request
+   mutate(tiempo_entre_audiencia_y_siguiente_solicitud=difftime(fecha_siguiente_solicitud, fecha_audiencia, units = "days") ) %>%
+   # time between request and request
+   mutate(tiempo_entre_solicitud_y_siguiente_solicitud=difftime(fecha_siguiente_solicitud, fecha_solicitud, units = "days") ) %>%
+   # time between request and hearing
+   mutate(tiempo_entre_solicitud_y_audiencia_solicitada=difftime(fecha_audiencia, fecha_solicitud, units = "days") ) 
+ 
+ # Those cases where we hace a drop and a new request presented in a time lapse of 25 days WILL BE CONSIDERED FALSE DROPS
+ 
