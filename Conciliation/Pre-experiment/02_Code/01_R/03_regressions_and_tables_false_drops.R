@@ -38,8 +38,8 @@ base_analisis <- read.csv(here("01_Data",
 
 numero_de_observaciones <- as.numeric(nrow(base_analisis))
 
-cat(numero_de_observaciones, file=here("06_Numbers",
-                                       "numero_observaciones_base_with_fake_drops"))
+writeLines(toString(numero_de_observaciones), here("06_Numbers",
+                                       "numero_observaciones_base_with_fake_drops.tex"))
 
 numero_de_observaciones_fd <- base_analisis %>%
   filter(false_drop_time_25_dropped==1) 
@@ -47,16 +47,16 @@ numero_de_observaciones_fd <- base_analisis %>%
 
 numero_de_observaciones_fd <- as.numeric(nrow(numero_de_observaciones_fd))
 
-cat(numero_de_observaciones_fd, file=here("06_Numbers",
-                                       "numero_de_fd_observaciones_base_with_fake_drops"))
+writeLines(toString(numero_de_observaciones_fd), here("06_Numbers",
+                                       "numero_de_fd_observaciones_base_with_fake_drops.tex"))
 
 number_of_times_worker <-base_analisis%>%
   filter(cuanto_repiten_curp_trabajador>1)  
 
 number_of_times_worker <- as.numeric(nrow(number_of_times_worker))
 
-cat(number_of_times_worker, file=here("06_Numbers",
-                                       "numero_de_casos_que_repiten_trab"))
+writeLines(toString(number_of_times_worker), here("06_Numbers",
+                                       "numero_de_casos_que_repiten_trab.tex"))
 
 
 # -----------------------------------------------------------------------------
