@@ -234,3 +234,53 @@ charac_proposal <- read_delim(str_c("01_Data/01_Raw/reporte-econometria-itam_",
   mutate(minimo_de_ley = c_indemnizacion + c_prima_antig + c_aguinaldo + c_vacaciones)
 
 
+# Create characteristics database at worker-request level
+# from the charcateristics keep only important variables, and winsorize data. 
+worker_characteristics <- charac_proposal %>%
+  select(solicitud_id, parte_trabajador_id, audiencia_id,numero_audiencia, horas_semanales, sal_diario, antig, diurna,
+         quincenal, c_indemnizacion, c_prima_antig, c_aguinaldo, c_vacaciones, minimo_de_ley, texto_conciliador,fecha_salida,fecha_ingreso,
+         curp_patron,curp_trabajador,rfc_trabajador,rfc_patron) %>%
+  rename(parte_id = parte_trabajador_id) %>%
+  distinct(solicitud_id, parte_id, audiencia_id, numero_audiencia, horas_semanales, sal_diario, antig, diurna,
+           quincenal, c_indemnizacion, c_prima_antig, c_aguinaldo, c_vacaciones, minimo_de_ley, .keep_all = TRUE) %>%
+  filter(horas_semanales < quantile(horas_semanales,c(.05,.99),na.rm=TRUE)[2]) %>%
+  filter(sal_diario < quantile(sal_diario,c(.05,.99),na.rm=TRUE)[2]) %>%
+  filter(antig < quantile(antig,c(.05,.99),na.rm=TRUE)[2]) 
+
+
+# worker-hearing-request-level----------------------------------------------------------------------------------
+# remeber this data base is at the level worker-hearing-request-employer
+# so from all hearings with a employer I want only one charcateristics of the worker
+
+worker_hearing_request_characteristics <- worker_characteristics %>%
+  group_by(solicitud_id,parte_id,audiencia_id, numero_audiencia) %>%
+  summarise( horas_semanales = mean(horas_semanales),
+             sal_diario = mean(sal_diario),
+             antig = mean(antig),
+             diurna = mean(diurna),
+             quincenal = mean(quincenal),
+             c_indemnizacion = mean(c_indemnizacion, na.rm = T),
+             c_prima_antig = mean(c_prima_antig, na.rm = T),
+             c_aguinaldo = mean(c_aguinaldo, na.rm = T),
+             c_vacaciones = mean(c_vacaciones, na.rm = T),
+             minimo_de_ley = mean(minimo_de_ley, na.rm = T),
+             numero_de_trabajadores = n()) %>%
+  ungroup()
+
+# add again the data that cannot be summarized, rfc curp etc.
+worker_characteristics <- worker_characteristics %>%
+  select(parte_id,curp_patron,curp_trabajador,rfc_trabajador,rfc_patron,fecha_salida,fecha_ingreso)  %>%
+  distinct(parte_id,.keep_all = T)
+
+# worker hearing request characteristics is at the level worker hearing request, therefore if I merge the data at the level worker, ill have the 
+# parte_id,curp_patron,curp_trabajador,rfc_trabajador,rfc_patron,fecha_salida,fecha_ingreso of the worker 
+#be careful, rfc and other employer features might not be correct as the abstraction level made us miss the employer level
+worker_hearing_request_characteristics <- left_join(worker_hearing_request_characteristics,worker_characteristics, by=c("parte_id"))
+
+# Save the worker-hearing-request characteristics database.
+write_csv(worker_hearing_request_characteristics, file = here("01_Data",
+                                                              "02_Created",
+                                                              "worker_hearing_request_characteristics.csv"))
+
+
+
