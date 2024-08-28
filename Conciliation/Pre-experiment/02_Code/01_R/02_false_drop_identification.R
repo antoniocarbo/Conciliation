@@ -87,7 +87,7 @@ final_base <- final_base %>%
  table(final_base$curp_repetido)
  
 # Create a variable that might be interesting (Number of summoned vs. number of attendees)
- base_analisis <- base_analisis %>%
+ final_base <- final_base %>%
    mutate(diferencia_citados_comaprecientes=numero_citados-citados_comparecen_audiencia)
 
 # The idea to identify a false drop is that immediately after a case has been archived, 
@@ -102,7 +102,7 @@ final_base <- final_base %>%
 # To solve this, the information from subsequent hearings is shifted by grouping by worker,
 # sorting according to the date, and then leading the data.
  
- base_analisis <- base_analisis %>%
+ final_base <- final_base %>%
    # grouping by worker 
    group_by(curp_trabajador) %>%
    # sorting according to the date
@@ -135,7 +135,6 @@ final_base <- final_base %>%
    mutate(max_no_hubo_convenio_next_claim=lead(max_no_hubo_convenio))%>%
    mutate(max_numero_audiencia_next_claim=lead(max_numero_audiencia))%>%
    # leading information about summoned and atendance to the hearings
-   mutate(presentado_next_claim=lead(presentado))%>%
    mutate(citados_comparecen_audiencia_next_claim=lead(citados_comparecen_audiencia))%>%
    mutate(diferencia_citados_comaprecientes_next_claim=lead(diferencia_citados_comaprecientes))%>%
    ungroup()
@@ -146,7 +145,7 @@ final_base <- final_base %>%
  
  # calculating the difference in days between tha repetead cases
  
- base_analisis <- base_analisis %>%
+ final_base <- final_base %>%
    # time between hearing and next request
    mutate(tiempo_entre_audiencia_y_siguiente_solicitud=difftime(fecha_siguiente_solicitud, fecha_audiencia, units = "days") ) %>%
    # time between request and request
@@ -154,5 +153,14 @@ final_base <- final_base %>%
    # time between request and hearing
    mutate(tiempo_entre_solicitud_y_audiencia_solicitada=difftime(fecha_audiencia, fecha_solicitud, units = "days") ) 
  
- # Those cases where we hace a drop and a new request presented in a time lapse of 25 days WILL BE CONSIDERED FALSE DROPS
+ # Those cases where we have a drop and a new request presented in a time lapse of 25 days WILL BE CONSIDERED FALSE DROPS
+ 
+ final_base <- final_base %>%
+   # if time between hearing and next request is less than 25 days and the file got dropped and the time between the hearing and 
+   # the next request is positive ---> then we have a false drop 
+   mutate(false_drop_time_25_dropped=if_else(tiempo_entre_audiencia_y_siguiente_solicitud<=25 &
+                                               max_archivado==1 &
+                                               tiempo_entre_audiencia_y_siguiente_solicitud>=0,1,0)) 
+ 
+
  
