@@ -50,7 +50,7 @@ summary_df %>%
   labs(y ='Relative Frequency', x='Number of hearings')
 
 
-## AVERAGE NUMBER OF ONE WORKER HEARINGS PER CONCILIATOR ---------------------------------
+## AVERAGE NUMBER OF ONE WORKER HEARINGS PER CONCILIATOR AND DAY---------------------------------
 
 conciliator <- conciliator[order(conciliator$audiencias, decreasing = F), ] %>%
   mutate(id = c(1:nrow(conciliator)))
@@ -60,14 +60,27 @@ ggplot(conciliator,
   geom_col(aes(x = id, y = audiencias),
            fill = "#004586",
            color = "white") +
-  labs(x = "Conciliator", y = "Average Daily One Worker Hearings") +
+  labs(x = "Conciliator", y = "Average Daily One Worker-First Hearing \n Hearings") +
   theme_classic()
 
 ggsave("04_Figures/conciliator_avg_hearings.pdf")
 
+## AVERAGE NUMBER OF HEARINGS PER REQUEST AND CONCILIATOR---------------------------------
 
+base_analisis_summary <- base_analisis %>%
+  group_by(conciliador) %>%
+  summarise(numero_de_audiencia=mean(max_numero_audiencia))
 
+base_analisis_summary <- base_analisis_summary[order(base_analisis_summary$numero_de_audiencia, decreasing = F), ] %>%
+  mutate(id = c(1:nrow(conciliator)))
 
+ggplot(base_analisis_summary, 
+       aes(x = id)) +
+  geom_col(aes(x = id, y = numero_de_audiencia),
+           fill = "#004586",
+           color = "white") +
+  labs(x = "Conciliator", y = "Average Request One Worker Hearings") +
+  theme_classic()
 
 
 
