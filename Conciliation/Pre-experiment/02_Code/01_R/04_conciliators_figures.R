@@ -110,3 +110,19 @@ ggplot(conciliator,
   theme_classic() +
   theme(panel.grid.major.x = element_line(color = "gray", linetype = "dotted"))
 
+
+## DENSITY OF THE EXPERIECNE OF THE CONCILAITOR AT THE DAY OF THE FIRST HEARING-------------------------------
+
+base_plot <- left_join(base_analisis,conciliator, by="conciliador")
+
+base_plot <- base_plot %>%
+  mutate(experience_first_hearing=as.Date(fecha_audiencia)- first_hearing)
+
+base_plot %>%
+  ggplot(aes(x=as.numeric(experience_first_hearing))) +
+  geom_density(fill = "dark blue") +
+  labs(x ='Experiennce of the conciliator \n at the day of the hearing', y='Density')
+
+
+
+
